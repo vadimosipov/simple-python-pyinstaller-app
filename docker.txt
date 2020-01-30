@@ -1,0 +1,38 @@
+docker network create jenkins-network
+docker volume create jenkins-docker-certs
+docker volume create jenkins-data
+docker volume create jenkins-docker-utils
+
+
+docker run \
+  --name jenkins-docker \
+  --rm \
+  --detach \
+  --privileged \
+  --network jenkins-network \
+  --network-alias docker \
+  --env DOCKER_TLS_CERTDIR=/certs \
+  --volume jenkins-docker-certs:/certs/client \
+  --volume /home/vosipov/projects/jenkins:/var/jenkins_home \
+  --volume jenkins-docker-utils:/usr/bin/docker \
+  --publish 2376:2376 \
+  docker:dind
+
+
+docker run \
+  --name jenkins-master \
+  --rm \
+  --detach \
+  --network jenkins-network \
+  --env DOCKER_HOST=tcp://docker:2376 \
+  --env DOCKER_CERT_PATH=/certs/client \
+  --env DOCKER_TLS_VERIFY=1 \
+  --volume jenkins-docker-certs:/certs/client:ro \
+  --volume /home/vosipov/projects/jenkins:/var/jenkins_home \
+  --volume jenkins-docker-utils/docker:/usr/bin/docker \
+  --publish 49180:8080 \
+  --publish 50000:50000 \
+  jenkins/jenkins@sha256:c1a408940f8e98a44d0985e3692777770e21188576c018f5ac31809cbdac3e0b
+
+
+docker run --name jenkins-agent1 --rm  --network jenkins-network jenkins/jnlp-slave:3.40-1-jdk11 -url http://172.21.0.2:8080 -workDir=/home/jenkins/agent  8ec59129e19821f9a9eb32ce35a8e3ab5f6d7315cff49b820282169732c8befc agent1
